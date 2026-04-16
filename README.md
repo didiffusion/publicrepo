@@ -1,97 +1,75 @@
-Code Challenge
-Challenge: Build a Scalable FastAPI Backend Service with PostgreSQL Integration
-Scenario:
-You are tasked with building a simple backend service for managing "Projects" and their associated "Tasks". Each Project can have multiple Tasks. The service should expose RESTful APIs to create, read, update, and delete Projects and Tasks. Additionally, implement an endpoint to retrieve all Tasks for a given Project, sorted by their priority.
+# PublicRepo
 
-Requirements:
+A simple, scalable FastAPI backend service for managing **Projects** and their associated **Tasks** with PostgreSQL integration.
 
-Backend API:
+---
 
-Use FastAPI to build the RESTful API.
+## Overview
 
-Implement the following endpoints:
+Each Project can have multiple Tasks. The service exposes RESTful APIs to create, read, update, and delete both Projects and Tasks, including an endpoint to retrieve all Tasks for a given Project sorted by priority.
 
-POST /projects/ - Create a new project.
+## API Endpoints
 
-GET /projects/{project_id} - Retrieve project details.
+### Projects
 
-PUT /projects/{project_id} - Update project details.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/projects/` | Create a new project |
+| `GET` | `/projects/{project_id}` | Retrieve project details |
+| `PUT` | `/projects/{project_id}` | Update project details |
+| `DELETE` | `/projects/{project_id}` | Delete a project |
 
-DELETE /projects/{project_id} - Delete a project.
+### Tasks
 
-POST /projects/{project_id}/tasks/ - Add a new task to a project.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/projects/{project_id}/tasks/` | Add a new task to a project |
+| `GET` | `/projects/{project_id}/tasks/` | List all tasks for a project |
+| `PUT` | `/tasks/{task_id}` | Update a task |
+| `DELETE` | `/tasks/{task_id}` | Delete a task |
 
-GET /projects/{project_id}/tasks/ - List all tasks for a project, sorted by priority (descending).
+## Data Model
 
-PUT /tasks/{task_id} - Update a task.
+### Project
 
-DELETE /tasks/{task_id} - Delete a task.
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | `int` | Primary key |
+| `name` | `str` | Required |
+| `description` | `str \| None` | Optional |
+| `created_at` | `datetime` | Auto-generated timestamp |
 
+### Task
 
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | `int` | Primary key |
+| `project_id` | `int` | Foreign key → `project.id` |
+| `title` | `str` | Required |
+| `priority` | `int` | Higher number = higher priority |
+| `completed` | `bool` | Default: `False` |
+| `due_date` | `date \| None` | Optional |
 
-Data Model:
+## Database
 
-Project:
+- **PostgreSQL** is used for data persistence.
+- Schema includes indexes on `project_id` and `priority`.
 
-id (UUID or int)
+## Tech Stack
 
-name (string, required)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [SQLModel](https://sqlmodel.tiangolo.com/)
+- PostgreSQL
+- Python 3.10+
 
-description (string, optional)
+## Running the App
 
-created_at (timestamp)
+```bash
+# Install dependencies
+pip install fastapi sqlmodel psycopg2-binary uvicorn
 
-Task:
+# Start the server
+uvicorn main:app --reload
+```
 
-id (UUID or int)
-
-project_id (foreign key to Project)
-
-title (string, required)
-
-priority (integer, higher number = higher priority)
-
-completed (boolean, default False)
-
-due_date (date, optional)
-
-Database:
-
-Use PostgreSQL for data persistence.
-
-Design efficient schema with appropriate indexes (e.g., on project_id and priority).
-
-Write optimized queries to fetch tasks sorted by priority.
-
-Additional Requirements:
-
-Use asynchronous endpoints and database calls (e.g., with asyncpg or databases library).
-
-Validate input data using Pydantic models.
-
-Handle errors gracefully (e.g., 404 for not found, 400 for invalid input).
-
-Write clean, maintainable, and well-structured code.
-
-Bonus (if time permits):
-
-Implement simple authentication (e.g., API key header) to protect the endpoints.
-
-Add pagination support to the GET /projects/{project_id}/tasks/ endpoint.
-
-Constraints & Resources
-Duration: 25-30 minutes.
-
-External Resources:
-
-Use a free PostgreSQL instance locally or via ElephantSQL (free tier).
-
-FastAPI documentation: https://fastapi.tiangolo.com/
-
-Async database libraries:
-
-databases (https://www.encode.io/databases/)
-
-asyncpg (https://magicstack.github.io/asyncpg/current/)
-
-Environment: Candidate can use any IDE or online environment supporting Python 3.8+ and PostgreSQL.
+Then open [http://localhost:8000/docs](http://localhost:8000/docs) for the interactive API documentation.

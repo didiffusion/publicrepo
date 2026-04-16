@@ -1,15 +1,28 @@
+from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 
-# models
+# ---------------------------------------------------------------------------
+# Database engine
+# ---------------------------------------------------------------------------
+engine = create_engine(
+    "postgresql://test:test@localhost/publicrepo",
+    isolation_level="REPEATABLE READ",
+)
+
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
 class Project(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     description: str | None = Field(default=None, index=True)
-    created_at: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class Task(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -17,33 +30,39 @@ class Task(SQLModel, table=True):
     title: str = Field(index=True)
     completed: bool = Field(default=False)
     priority: int = Field(default=0)
-    due_date: str
+    due_date: date | None = Field(default=None)
 
 
-engine = create_engine("postgresql://test:test@localhost/publicrepo", isolation_level="REPEATABLE READ")
-
-
+# ---------------------------------------------------------------------------
+# Dependency injection
+# ---------------------------------------------------------------------------
 def get_session():
     with Session(engine) as session:
         yield session
 
-SessionDep = Annotated[Session, Depends(get_session)]
-app = FastAPI()
 
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+SessionDep = Annotated[Session, Depends(get_session)]
+
+# ---------------------------------------------------------------------------
+# Application
+# ---------------------------------------------------------------------------
+app = FastAPI(title="PublicRepo", version="0.1.0")
 
 
 @app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-    
+def on_startup() -> None:
+    SQLModel.metadata.create_all(engine)
+
+
 @app.get("/")
-def get_root():
-    return {"Hello": "PublicRepo!"}
+def get_root() -> dict[str, str]:
+    return {"message": "Hello, PublicRepo!"}
 
 
-@app.post("/projects/")
+# ---------------------------------------------------------------------------
+# Projects
+# ---------------------------------------------------------------------------
+@app.post("/projects/", response_model=Project)
 def create_project(project: Project, session: SessionDep) -> Project:
     session.add(project)
     session.commit()
@@ -51,16 +70,16 @@ def create_project(project: Project, session: SessionDep) -> Project:
     return project
 
 
-@app.get("/projects/{project_id}")
-def read_project(project_id: int, session: SessionDep):
+@app.get("/projects/{project_id}", response_model=Project)
+def read_project(project_id: int, session: SessionDep) -> Project:
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
 
-@app.put("/projects/{project_id}")
-def update_project(project_id: int, project: Project, session: SessionDep):
+@app.put("/projects/{project_id}", response_model=Project)
+def update_project(project_id: int, project: Project, session: SessionDep) -> Project:
     project_db = session.get(Project, project_id)
     if not project_db:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -73,7 +92,7 @@ def update_project(project_id: int, project: Project, session: SessionDep):
 
 
 @app.delete("/projects/{project_id}")
-def delete_project(project_id: int, session: SessionDep):
+def delete_project(project_id: int, session: SessionDep) -> dict[str, object]:
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -82,7 +101,10 @@ def delete_project(project_id: int, session: SessionDep):
     return {"project_id": project_id, "status": "deleted"}
 
 
-@app.post("/projects/{project_id}/tasks/")
+# ---------------------------------------------------------------------------
+# Tasks
+# ---------------------------------------------------------------------------
+@app.post("/projects/{project_id}/tasks/", response_model=Task)
 def create_task(project_id: int, task: Task, session: SessionDep) -> Task:
     project = session.get(Project, project_id)
     if not project:
@@ -95,7 +117,7 @@ def create_task(project_id: int, task: Task, session: SessionDep) -> Task:
 
 
 @app.get("/projects/{project_id}/tasks/")
-def read_tasks(project_id: int, session: SessionDep):
+def read_tasks(project_id: int, session: SessionDep) -> list[Task]:
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -103,9 +125,8 @@ def read_tasks(project_id: int, session: SessionDep):
     return tasks
 
 
-
-@app.put("/tasks/{task_id}")
-def update_task(task_id: int, task: Task, session: SessionDep):
+@app.put("/tasks/{task_id}", response_model=Task)
+def update_task(task_id: int, task: Task, session: SessionDep) -> Task:
     task_db = session.get(Task, task_id)
     if not task_db:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -118,11 +139,10 @@ def update_task(task_id: int, task: Task, session: SessionDep):
 
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int, session: SessionDep):
+def delete_task(task_id: int, session: SessionDep) -> dict[str, object]:
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     session.delete(task)
     session.commit()
     return {"task_id": task_id, "status": "deleted"}
-
